@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
+# File path for the stocklist.xlsx
+FILE_PATH = 'stocklist.xlsx'
+
 # Function to fetch financial data and calculate growth
 def get_financial_data(symbol):
     stock = yf.Ticker(symbol)
@@ -112,8 +115,8 @@ def get_stock_price_performance(symbol, period):
         return np.nan
 
 # Main function to analyze all stocks
-def analyze_and_display(file, sheet_name):
-    xl = pd.ExcelFile(file)
+def analyze_and_display(sheet_name):
+    xl = pd.ExcelFile(FILE_PATH)
     df = xl.parse(sheet_name)
     stock_symbols = df['Symbol'].dropna().tolist()
     
@@ -130,22 +133,19 @@ def analyze_and_display(file, sheet_name):
     # Convert results to DataFrame and display in Streamlit
     results_df = pd.DataFrame(results)
     st.write(f"### Analysis Results for {sheet_name}")
-    st.table(results_df)
+    st.dataframe(results_df, use_container_width=True)
 
 # Streamlit UI
 def main():
     st.title("Stock Financial Analysis")
     
-    # File uploader
-    uploaded_file = st.file_uploader("Upload stocklist.xlsx", type="xlsx")
+    # Sheet names from the Excel file
+    sheet_names = ['NIFTY50', 'NIFTYNEXT50', 'NIFTY100', 'NIFTY20', 'NIFTY500']
     
-    if uploaded_file:
-        xl = pd.ExcelFile(uploaded_file)
-        sheet_names = xl.sheet_names
-        sheet_name = st.selectbox("Select a sheet to analyze", sheet_names)
-        
-        if st.button("Analyze Stocks"):
-            analyze_and_display(uploaded_file, sheet_name)
+    sheet_name = st.selectbox("Select a sheet to analyze", sheet_names)
+    
+    if st.button("Analyze Stocks"):
+        analyze_and_display(sheet_name)
 
 if __name__ == "__main__":
     main()
