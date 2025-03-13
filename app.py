@@ -109,9 +109,9 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     c.drawString(30, 670, "Disclaimer: This analysis is for informational purposes only. It does not constitute investment advice.")
     
     # Insert Top 5 Stocks with Highest Revenue Growth
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("Helvetica-Bold", 8)
     c.drawString(30, 650, "Top 5 Stocks with Highest Revenue Growth")
-    c.setFont("Helvetica", 10)
+    c.setFont("Helvetica", 8)
     y_position = 630
     headers = ['Symbol', 'Revenue Growth', 'Gross Profit Growth', 'Operating Income Growth', 'Net Income Growth', '30 Day Price Performance', '1 Year Price Performance']
     
