@@ -94,8 +94,8 @@ def get_financial_data(symbol):
         print(f"Error fetching data for {symbol}: {e}")
         return None
 
-# Function to generate PDF report with fixed table alignment
-def generate_pdf(results_df, sheet_name, analyst_name):
+# Function to generate PDF report with fixed table alignment and other adjustments
+def generate_pdf(results_df, index_name, analyst_name):
     packet = BytesIO()
     c = canvas.Canvas(packet, pagesize=letter)
 
@@ -103,7 +103,7 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     c.setFont("Helvetica-Bold", 18)
     c.drawString(30, 750, "Stock Financial Growth and Price Movement Analysis Dashboard")
     c.setFont("Helvetica", 12)
-    c.drawString(30, 730, f"Sheet Name: {sheet_name}")
+    c.drawString(30, 730, f"Index Name: {index_name}")
     c.drawString(30, 710, f"Research Analyst: {analyst_name}")
     c.drawString(30, 690, f"Date of Analysis: {datetime.now().strftime('%Y-%m-%d')}")
     c.drawString(30, 670, "Disclaimer: This analysis is for informational purposes only. It does not constitute investment advice.")
@@ -113,23 +113,36 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     c.drawString(30, 650, "Top 5 Stocks with Highest Revenue Growth")
     c.setFont("Helvetica", 10)
     y_position = 630
-    headers = ['Symbol', 'Revenue Growth', 'Gross Profit Growth', 'Operating Income Growth', 'Net Income Growth', '30 Day Price Performance', '1 Year Price Performance']
-    
+
+    # Shortened headers
+    headers = ['Symbol', 'Rev Growth', 'GP Growth', 'OI Growth', 'NI Growth', '30D Price Perf', '1Y Price Perf']
+    full_form = {
+        'Rev Growth': 'Revenue Growth',
+        'GP Growth': 'Gross Profit Growth',
+        'OI Growth': 'Operating Income Growth',
+        'NI Growth': 'Net Income Growth',
+        '30D Price Perf': '30 Day Price Performance',
+        '1Y Price Perf': '1 Year Price Performance'
+    }
+
     column_widths = [80, 100, 100, 100, 100, 120, 120]
+    
+    # Draw the column headers
     for i, header in enumerate(headers):
         c.drawString(30 + sum(column_widths[:i]), y_position, header)
     y_position -= 20
 
     # Add data rows for Top 5 Revenue Growth
     for index, row in results_df.sort_values(by='Revenue Growth', ascending=False).head(5).iterrows():
+        # Remove .NS from Symbol
+        symbol = row['Symbol'].replace('.NS', '')
         for i, col in enumerate(headers):
-            # Handle non-numeric values and round numeric values
-            value = row[col]
-            if isinstance(value, (int, float)):  # If the value is numeric
+            value = row[full_form[col]] if isinstance(row[full_form[col]], (int, float)) else str(row[full_form[col]])
+            if isinstance(value, (int, float)):
                 value = round(value, 2)  # Round to 2 decimal places
             else:
-                value = str(value) if pd.notna(value) else 'N/A'  # Handle NaN and non-numeric values
-            c.drawString(30 + sum(column_widths[:i]), y_position, str(value))  # Convert value to string
+                value = 'N/A' if pd.isna(value) else value  # Handle NaN and non-numeric values
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(value))
         y_position -= 20
         if y_position < 100:
             c.showPage()
@@ -146,22 +159,37 @@ def generate_pdf(results_df, sheet_name, analyst_name):
 
     # Add data rows for Lowest Price Performance
     for index, row in results_df.sort_values(by='30 Day Price Performance').head(5).iterrows():
+        # Remove .NS from Symbol
+        symbol = row['Symbol'].replace('.NS', '')
         for i, col in enumerate(headers):
-            # Handle non-numeric values and round numeric values
-            value = row[col]
-            if isinstance(value, (int, float)):  # If the value is numeric
+            value = row[full_form[col]] if isinstance(row[full_form[col]], (int, float)) else str(row[full_form[col]])
+            if isinstance(value, (int, float)):
                 value = round(value, 2)  # Round to 2 decimal places
             else:
-                value = str(value) if pd.notna(value) else 'N/A'  # Handle NaN and non-numeric values
-            c.drawString(30 + sum(column_widths[:i]), y_position, str(value))  # Convert value to string
+                value = 'N/A' if pd.isna(value) else value  # Handle NaN and non-numeric values
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(value))
         y_position -= 20
         if y_position < 100:
             c.showPage()
             y_position = 750
 
+    # Footer with Full Forms of Shortened Names
+    c.setFont("Helvetica", 8)
+    footer_text = (
+        "Full Form of Shortened Names:\n"
+        "Rev Growth = Revenue Growth\n"
+        "GP Growth = Gross Profit Growth\n"
+        "OI Growth = Operating Income Growth\n"
+        "NI Growth = Net Income Growth\n"
+        "30D Price Perf = 30 Day Price Performance\n"
+        "1Y Price Perf = 1 Year Price Performance"
+    )
+    c.drawString(30, 50, footer_text)
+
     c.save()
     packet.seek(0)
     return packet
+
 
 
 # Function to get stock symbols from the Excel file
