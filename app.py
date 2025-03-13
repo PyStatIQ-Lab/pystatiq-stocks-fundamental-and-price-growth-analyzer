@@ -140,7 +140,7 @@ def analyze_and_display(sheet_name):
 
 # Streamlit UI
 def main():
-    st.title("Stock Financial Analysis Dashboard")
+    st.title("Stock Financial Growth and Price Movement Analysis Dashboard")
     
     sheet_names = ['NIFTY50', 'NIFTYNEXT50', 'NIFTY100', 'NIFTY20', 'NIFTY500']
     
@@ -150,11 +150,11 @@ def main():
         results_df = analyze_and_display(sheet_name)
         
         st.subheader(f"Top 5 Stocks Based on Revenue Growth")
-        top_stocks_revenue_growth = results_df.sort_values(by='Revenue Growth', ascending=False).head(5)
+        top_stocks_revenue_growth = results_df.sort_values(by='Revenue Growth', ascending=False).head(10)
         st.dataframe(top_stocks_revenue_growth[['Symbol', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth', 'Gross Profit Growth']], use_container_width=True)
 
         st.subheader(f"Top 5 Stocks with Lowest Price Performance in Last 1 Month")
-        top_stocks_price_performance = results_df.sort_values(by='30 Day Price Performance').head(5)
+        top_stocks_price_performance = results_df.sort_values(by='30 Day Price Performance').head(10)
         st.dataframe(top_stocks_price_performance[['Symbol', '30 Day Price Performance', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth']], use_container_width=True)
         
         # Visualizing growth for the first stock
