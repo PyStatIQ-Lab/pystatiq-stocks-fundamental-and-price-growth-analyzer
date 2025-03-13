@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 import matplotlib.pyplot as plt
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
@@ -94,11 +94,11 @@ def get_financial_data(symbol):
         print(f"Error fetching data for {symbol}: {e}")
         return None
 
-# Function to generate PDF report
+# Function to generate PDF report with fixed table alignment
 def generate_pdf(results_df, sheet_name, analyst_name):
     packet = BytesIO()
     c = canvas.Canvas(packet, pagesize=letter)
-    
+
     # Title and metadata
     c.setFont("Helvetica-Bold", 18)
     c.drawString(30, 750, "Stock Financial Growth and Price Movement Analysis Dashboard")
@@ -114,44 +114,44 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     c.setFont("Helvetica", 10)
     y_position = 630
     headers = ['Symbol', 'Revenue Growth', 'Gross Profit Growth', 'Operating Income Growth', 'Net Income Growth', '30 Day Price Performance', '1 Year Price Performance']
-    for i, header in enumerate(headers):
-        c.drawString(30 + i*80, y_position, header)
-    y_position -= 20
     
+    column_widths = [80, 100, 100, 100, 100, 120, 120]
+    for i, header in enumerate(headers):
+        c.drawString(30 + sum(column_widths[:i]), y_position, header)
+    y_position -= 20
+
     # Add data rows for Top 5 Revenue Growth
     for index, row in results_df.sort_values(by='Revenue Growth', ascending=False).head(5).iterrows():
         for i, col in enumerate(headers):
-            c.drawString(30 + i*80, y_position, str(row[col]))
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(row[col]))
         y_position -= 20
         if y_position < 100:
             c.showPage()
             y_position = 750
-    
+
     # Insert Top 5 Stocks with Lowest Price Performance
     c.setFont("Helvetica-Bold", 14)
     c.drawString(30, y_position - 20, "Top 5 Stocks with Lowest Price Performance in Last 1 Month")
     c.setFont("Helvetica", 10)
     y_position -= 40
     for i, header in enumerate(headers):
-        c.drawString(30 + i*80, y_position, header)
+        c.drawString(30 + sum(column_widths[:i]), y_position, header)
     y_position -= 20
-    
+
     # Add data rows for Lowest Price Performance
     for index, row in results_df.sort_values(by='30 Day Price Performance').head(5).iterrows():
         for i, col in enumerate(headers):
-            c.drawString(30 + i*80, y_position, str(row[col]))
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(row[col]))
         y_position -= 20
         if y_position < 100:
             c.showPage()
             y_position = 750
 
-    # Save PDF to buffer
     c.save()
     packet.seek(0)
-    
     return packet
 
-# Function to fetch stock symbols from the selected sheet
+# Function to get stock symbols from the Excel file
 def get_stock_symbols(sheet_name):
     xl = pd.ExcelFile(FILE_PATH)
     df = xl.parse(sheet_name)
