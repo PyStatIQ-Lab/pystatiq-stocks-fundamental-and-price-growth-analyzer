@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # File path for the stocklist.xlsx
 FILE_PATH = 'stocklist.xlsx'
@@ -114,38 +116,53 @@ def get_stock_price_performance(symbol, period):
     else:
         return np.nan
 
-# Main function to analyze all stocks
-def analyze_and_display(sheet_name):
+# Function to fetch stock symbols from the selected sheet
+def get_stock_symbols(sheet_name):
     xl = pd.ExcelFile(FILE_PATH)
     df = xl.parse(sheet_name)
-    stock_symbols = df['Symbol'].dropna().tolist()
-    
+    return df['Symbol'].dropna().tolist()
+
+# Main function to analyze and display
+def analyze_and_display(sheet_name):
+    stock_symbols = get_stock_symbols(sheet_name)
     results = []
+    
     for symbol in stock_symbols:
         financial_data = get_financial_data(symbol)
         if financial_data:
             for period in [30, 180, 365]:  # 1 month, 6 months, 1 year
                 price_performance = get_stock_price_performance(symbol, period)
                 financial_data[f'{period} Day Price Performance'] = price_performance
-            
             results.append(financial_data)
     
-    # Convert results to DataFrame and display in Streamlit
     results_df = pd.DataFrame(results)
-    st.write(f"### Analysis Results for {sheet_name}")
-    st.dataframe(results_df, use_container_width=True)
+    return results_df
 
 # Streamlit UI
 def main():
-    st.title("Stock Financial Analysis")
+    st.title("Stock Financial Analysis Dashboard")
     
-    # Sheet names from the Excel file
     sheet_names = ['NIFTY50', 'NIFTYNEXT50', 'NIFTY100', 'NIFTY20', 'NIFTY500']
     
     sheet_name = st.selectbox("Select a sheet to analyze", sheet_names)
     
     if st.button("Analyze Stocks"):
-        analyze_and_display(sheet_name)
+        results_df = analyze_and_display(sheet_name)
+        
+        st.subheader(f"Top 5 Stocks Based on Revenue Growth")
+        top_stocks_revenue_growth = results_df.sort_values(by='Revenue Growth', ascending=False).head(5)
+        st.dataframe(top_stocks_revenue_growth[['Symbol', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth', 'Gross Profit Growth']], use_container_width=True)
+
+        st.subheader(f"Top 5 Stocks with Lowest Price Performance in Last 1 Month")
+        top_stocks_price_performance = results_df.sort_values(by='30 Day Price Performance').head(5)
+        st.dataframe(top_stocks_price_performance[['Symbol', '30 Day Price Performance', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth']], use_container_width=True)
+        
+        # Visualizing growth for the first stock
+        st.subheader("Revenue Growth Visualization")
+        st.bar_chart(results_df['Revenue Growth'].head(10))
+    
+        st.subheader("Complete Financial Data")
+        st.dataframe(results_df, use_container_width=True)
 
 if __name__ == "__main__":
     main()
