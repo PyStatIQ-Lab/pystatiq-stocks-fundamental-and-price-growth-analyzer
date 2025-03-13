@@ -116,6 +116,8 @@ def generate_pdf(results_df, index_name, analyst_name):
 
     # Shortened headers
     headers = ['Symbol', 'Rev Growth', 'GP Growth', 'OI Growth', 'NI Growth', '30D Price Perf', '1Y Price Perf']
+    
+    # Full names for the columns
     full_form = {
         'Rev Growth': 'Revenue Growth',
         'GP Growth': 'Gross Profit Growth',
@@ -136,12 +138,19 @@ def generate_pdf(results_df, index_name, analyst_name):
     for index, row in results_df.sort_values(by='Revenue Growth', ascending=False).head(5).iterrows():
         # Remove .NS from Symbol
         symbol = row['Symbol'].replace('.NS', '')
+        
+        # Access the value of the full column name directly
         for i, col in enumerate(headers):
-            value = row[full_form[col]] if isinstance(row[full_form[col]], (int, float)) else str(row[full_form[col]])
+            # Look up the full name of the column using full_form
+            column_name = full_form.get(col, col)  # Get full form name if exists, else use abbreviation
+
+            value = row[column_name] if isinstance(row[column_name], (int, float)) else str(row[column_name])
+
             if isinstance(value, (int, float)):
                 value = round(value, 2)  # Round to 2 decimal places
             else:
                 value = 'N/A' if pd.isna(value) else value  # Handle NaN and non-numeric values
+
             c.drawString(30 + sum(column_widths[:i]), y_position, str(value))
         y_position -= 20
         if y_position < 100:
@@ -161,12 +170,19 @@ def generate_pdf(results_df, index_name, analyst_name):
     for index, row in results_df.sort_values(by='30 Day Price Performance').head(5).iterrows():
         # Remove .NS from Symbol
         symbol = row['Symbol'].replace('.NS', '')
+        
+        # Access the value of the full column name directly
         for i, col in enumerate(headers):
-            value = row[full_form[col]] if isinstance(row[full_form[col]], (int, float)) else str(row[full_form[col]])
+            # Look up the full name of the column using full_form
+            column_name = full_form.get(col, col)  # Get full form name if exists, else use abbreviation
+
+            value = row[column_name] if isinstance(row[column_name], (int, float)) else str(row[column_name])
+
             if isinstance(value, (int, float)):
                 value = round(value, 2)  # Round to 2 decimal places
             else:
                 value = 'N/A' if pd.isna(value) else value  # Handle NaN and non-numeric values
+
             c.drawString(30 + sum(column_widths[:i]), y_position, str(value))
         y_position -= 20
         if y_position < 100:
