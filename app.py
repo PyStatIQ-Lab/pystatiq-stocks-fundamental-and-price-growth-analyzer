@@ -76,36 +76,19 @@ def get_financial_data(symbol):
         operating_income_growth = ((operating_income - income_statement.get('Operating Income', [np.nan])[1]) / income_statement.get('Operating Income', [np.nan])[1]) * 100 if len(income_statement) > 1 else np.nan
         net_income_growth = ((net_income - income_statement.get('Net Income', [np.nan])[1]) / income_statement.get('Net Income', [np.nan])[1]) * 100 if len(income_statement) > 1 else np.nan
 
-        # Price performance (30-day)
-        price_history = stock.history(period="30d")
-        price_performance = ((price_history['Close'][-1] - price_history['Close'][0]) / price_history['Close'][0]) * 100
+        # Price performance (30-day and 1-year)
+        price_history = stock.history(period="1y")
+        price_performance_30d = ((price_history['Close'][-1] - price_history['Close'][0]) / price_history['Close'][0]) * 100
+        price_performance_1y = ((price_history['Close'][-1] - price_history['Close'][0]) / price_history['Close'][0]) * 100
 
         return {
             'Symbol': symbol,
-            'Revenue': revenue,
             'Revenue Growth': revenue_growth,
-            'COGS Growth': cogs_growth,
             'Gross Profit Growth': gross_profit_growth,
             'Operating Income Growth': operating_income_growth,
             'Net Income Growth': net_income_growth,
-            '30 Day Price Performance': price_performance,
-            'Gross Profit Margin': gross_profit_margin,
-            'Operating Profit Margin': operating_profit_margin,
-            'Net Profit Margin': net_profit_margin,
-            'Return on Equity (ROE)': roe,
-            'Return on Assets (ROA)': roa,
-            'Current Ratio': current_ratio,
-            'Quick Ratio': quick_ratio,
-            'Debt-to-Equity': debt_to_equity,
-            'Debt-to-Assets': debt_to_assets,
-            'Asset Turnover': asset_turnover,
-            'Inventory Turnover': inventory_turnover,
-            'Receivables Turnover': receivables_turnover,
-            'P/E Ratio': pe_ratio,
-            'P/B Ratio': pb_ratio,
-            'Dividend Yield': dividend_yield,
-            'Operating Cash Flow to Sales': (operating_cash_flow / revenue) * 100 if operating_cash_flow and revenue else np.nan,
-            'Free Cash Flow': free_cash_flow
+            '30 Day Price Performance': price_performance_30d,
+            '1 Year Price Performance': price_performance_1y
         }
     except Exception as e:
         print(f"Error fetching data for {symbol}: {e}")
@@ -125,18 +108,36 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     c.drawString(30, 690, f"Date of Analysis: {datetime.now().strftime('%Y-%m-%d')}")
     c.drawString(30, 670, "Disclaimer: This analysis is for informational purposes only. It does not constitute investment advice.")
     
-    # Insert a table
+    # Insert Top 5 Stocks with Highest Revenue Growth
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(30, 650, "Top 5 Stocks with Highest Revenue Growth")
     c.setFont("Helvetica", 10)
     y_position = 630
-    
-    # Add header
-    headers = results_df.columns.tolist()
+    headers = ['Symbol', 'Revenue Growth', 'Gross Profit Growth', 'Operating Income Growth', 'Net Income Growth', '30 Day Price Performance', '1 Year Price Performance']
     for i, header in enumerate(headers):
         c.drawString(30 + i*80, y_position, header)
     y_position -= 20
     
-    # Add data rows
-    for index, row in results_df.iterrows():
+    # Add data rows for Top 5 Revenue Growth
+    for index, row in results_df.sort_values(by='Revenue Growth', ascending=False).head(5).iterrows():
+        for i, col in enumerate(headers):
+            c.drawString(30 + i*80, y_position, str(row[col]))
+        y_position -= 20
+        if y_position < 100:
+            c.showPage()
+            y_position = 750
+    
+    # Insert Top 5 Stocks with Lowest Price Performance
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(30, y_position - 20, "Top 5 Stocks with Lowest Price Performance in Last 1 Month")
+    c.setFont("Helvetica", 10)
+    y_position -= 40
+    for i, header in enumerate(headers):
+        c.drawString(30 + i*80, y_position, header)
+    y_position -= 20
+    
+    # Add data rows for Lowest Price Performance
+    for index, row in results_df.sort_values(by='30 Day Price Performance').head(5).iterrows():
         for i, col in enumerate(headers):
             c.drawString(30 + i*80, y_position, str(row[col]))
         y_position -= 20
@@ -154,49 +155,49 @@ def generate_pdf(results_df, sheet_name, analyst_name):
 def get_stock_symbols(sheet_name):
     xl = pd.ExcelFile(FILE_PATH)
     df = xl.parse(sheet_name)
-    return df['Symbol'].dropna().tolist()
+    return df['Symbol'].tolist()
 
-# Main function to analyze and display
-def analyze_and_display(sheet_name):
-    stock_symbols = get_stock_symbols(sheet_name)
-    results = []
-    
-    for symbol in stock_symbols:
-        financial_data = get_financial_data(symbol)
-        if financial_data:
-            results.append(financial_data)
-    
-    results_df = pd.DataFrame(results)
-    return results_df
-
-# Streamlit UI
+# Streamlit Dashboard UI
 def main():
-    st.title("Stock Financial Analysis Dashboard")
+    st.title("Stock Financial Growth and Price Movement Analysis Dashboard")
     
-    sheet_names = ['NIFTY50', 'NIFTYNEXT50', 'NIFTY100', 'NIFTY20', 'NIFTY500']
-    sheet_name = st.selectbox("Select a sheet to analyze", sheet_names)
-    analyst_name = st.text_input("Research Analyst Name", "")
+    # Select Sheet
+    sheet_name = st.selectbox("Select Sheet", ['NIFTY50', 'NIFTYNEXT50', 'NIFTY100', 'NIFTY20', 'NIFTY500'])
     
+    # Research Analyst Name
+    analyst_name = st.text_input("Research Analyst Name")
+    
+    # Analyze Stocks Button
     if st.button("Analyze Stocks"):
-        if analyst_name:
-            results_df = analyze_and_display(sheet_name)
-            
-            # Show Top 5 Stocks with Highest Revenue Growth
-            st.subheader(f"Top 5 Stocks with Highest Revenue Growth")
-            top_stocks_revenue_growth = results_df.sort_values(by='Revenue Growth', ascending=False).head(10)
-            st.dataframe(top_stocks_revenue_growth[['Symbol', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth', 'Gross Profit Growth']], use_container_width=True)
-            
-            # Show Top 5 Stocks with Lowest Price Performance in Last 1 Month
-            st.subheader(f"Top 5 Stocks with Lowest Price Performance in Last 1 Month")
-            top_stocks_price_performance = results_df.sort_values(by='30 Day Price Performance').head(10)
-            st.dataframe(top_stocks_price_performance[['Symbol', '30 Day Price Performance', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth']], use_container_width=True)
-
-            # Visualizing Revenue Growth for the top 10 stocks
-            st.subheader("Revenue Growth Visualization")
-            st.bar_chart(results_df['Revenue Growth'].head(10))
-            
-            # Generate PDF button
-            
+        symbols = get_stock_symbols(sheet_name)
+        results = []
+        
+        # Fetch financial data for each symbol
+        for symbol in symbols:
+            stock_data = get_financial_data(symbol)
+            if stock_data:
+                results.append(stock_data)
+        
+        # Convert results to DataFrame
+        results_df = pd.DataFrame(results)
+        
+        # Display the results in a table
+        st.subheader(f"Top 5 Stocks with Highest Revenue Growth")
+        top_stocks_revenue_growth = results_df.sort_values(by='Revenue Growth', ascending=False).head(5)
+        st.dataframe(top_stocks_revenue_growth[['Symbol', 'Revenue Growth', 'Gross Profit Growth', 'Operating Income Growth', 'Net Income Growth', '30 Day Price Performance', '1 Year Price Performance']])
+        
+        st.subheader(f"Top 5 Stocks with Lowest Price Performance in Last 1 Month")
+        top_stocks_price_performance = results_df.sort_values(by='30 Day Price Performance').head(5)
+        st.dataframe(top_stocks_price_performance[['Symbol', '30 Day Price Performance', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth']])
+        
+        # Generate PDF report and download link
+        pdf_report = generate_pdf(results_df, sheet_name, analyst_name)
+        st.download_button(
+            label="Download PDF Report",
+            data=pdf_report.getvalue(),
+            file_name="financial_analysis_report.pdf",
+            mime="application/pdf"
+        )
 
 if __name__ == "__main__":
     main()
