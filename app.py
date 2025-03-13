@@ -123,7 +123,13 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     # Add data rows for Top 5 Revenue Growth
     for index, row in results_df.sort_values(by='Revenue Growth', ascending=False).head(5).iterrows():
         for i, col in enumerate(headers):
-            c.drawString(30 + sum(column_widths[:i]), y_position, str(round(row[col], 2)))  # Round to 2 decimals
+            # Handle non-numeric values and round numeric values
+            value = row[col]
+            if isinstance(value, (int, float)):  # If the value is numeric
+                value = round(value, 2)  # Round to 2 decimal places
+            else:
+                value = str(value) if pd.notna(value) else 'N/A'  # Handle NaN and non-numeric values
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(value))  # Convert value to string
         y_position -= 20
         if y_position < 100:
             c.showPage()
@@ -141,7 +147,13 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     # Add data rows for Lowest Price Performance
     for index, row in results_df.sort_values(by='30 Day Price Performance').head(5).iterrows():
         for i, col in enumerate(headers):
-            c.drawString(30 + sum(column_widths[:i]), y_position, str(round(row[col], 2)))  # Round to 2 decimals
+            # Handle non-numeric values and round numeric values
+            value = row[col]
+            if isinstance(value, (int, float)):  # If the value is numeric
+                value = round(value, 2)  # Round to 2 decimal places
+            else:
+                value = str(value) if pd.notna(value) else 'N/A'  # Handle NaN and non-numeric values
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(value))  # Convert value to string
         y_position -= 20
         if y_position < 100:
             c.showPage()
@@ -150,6 +162,7 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     c.save()
     packet.seek(0)
     return packet
+
 
 # Function to get stock symbols from the Excel file
 def get_stock_symbols(sheet_name):
