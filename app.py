@@ -196,12 +196,7 @@ def main():
             st.bar_chart(results_df['Revenue Growth'].head(10))
             
             # Generate PDF button
-            pdf_button = st.download_button(
-                label="Download PDF Report",
-                data=generate_pdf(results_df, sheet_name, analyst_name).getvalue(),
-                file_name="financial_analysis_report.pdf",
-                mime="application/pdf"
-            )
+            
 
 if __name__ == "__main__":
     main()
