@@ -83,12 +83,12 @@ def get_financial_data(symbol):
 
         return {
             'Symbol': symbol,
-            'Revenue Growth': revenue_growth,
-            'Gross Profit Growth': gross_profit_growth,
-            'Operating Income Growth': operating_income_growth,
-            'Net Income Growth': net_income_growth,
-            '30 Day Price Performance': price_performance_30d,
-            '1 Year Price Performance': price_performance_1y
+            'Revenue Growth': round(revenue_growth, 2),
+            'Gross Profit Growth': round(gross_profit_growth, 2),
+            'Operating Income Growth': round(operating_income_growth, 2),
+            'Net Income Growth': round(net_income_growth, 2),
+            '30 Day Price Performance': round(price_performance_30d, 2),
+            '1 Year Price Performance': round(price_performance_1y, 2)
         }
     except Exception as e:
         print(f"Error fetching data for {symbol}: {e}")
@@ -109,9 +109,9 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     c.drawString(30, 670, "Disclaimer: This analysis is for informational purposes only. It does not constitute investment advice.")
     
     # Insert Top 5 Stocks with Highest Revenue Growth
-    c.setFont("Helvetica-Bold", 8)
+    c.setFont("Helvetica-Bold", 14)
     c.drawString(30, 650, "Top 5 Stocks with Highest Revenue Growth")
-    c.setFont("Helvetica", 8)
+    c.setFont("Helvetica", 10)
     y_position = 630
     headers = ['Symbol', 'Revenue Growth', 'Gross Profit Growth', 'Operating Income Growth', 'Net Income Growth', '30 Day Price Performance', '1 Year Price Performance']
     
@@ -123,7 +123,7 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     # Add data rows for Top 5 Revenue Growth
     for index, row in results_df.sort_values(by='Revenue Growth', ascending=False).head(5).iterrows():
         for i, col in enumerate(headers):
-            c.drawString(30 + sum(column_widths[:i]), y_position, str(row[col]))
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(round(row[col], 2)))  # Round to 2 decimals
         y_position -= 20
         if y_position < 100:
             c.showPage()
@@ -141,7 +141,7 @@ def generate_pdf(results_df, sheet_name, analyst_name):
     # Add data rows for Lowest Price Performance
     for index, row in results_df.sort_values(by='30 Day Price Performance').head(5).iterrows():
         for i, col in enumerate(headers):
-            c.drawString(30 + sum(column_widths[:i]), y_position, str(row[col]))
+            c.drawString(30 + sum(column_widths[:i]), y_position, str(round(row[col], 2)))  # Round to 2 decimals
         y_position -= 20
         if y_position < 100:
             c.showPage()
