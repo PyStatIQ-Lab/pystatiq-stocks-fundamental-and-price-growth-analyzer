@@ -4,7 +4,10 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
-import seaborn as sns
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
 
 # File path for the stocklist.xlsx
 FILE_PATH = 'stocklist.xlsx'
@@ -73,6 +76,10 @@ def get_financial_data(symbol):
         operating_income_growth = ((operating_income - income_statement.get('Operating Income', [np.nan])[1]) / income_statement.get('Operating Income', [np.nan])[1]) * 100 if len(income_statement) > 1 else np.nan
         net_income_growth = ((net_income - income_statement.get('Net Income', [np.nan])[1]) / income_statement.get('Net Income', [np.nan])[1]) * 100 if len(income_statement) > 1 else np.nan
 
+        # Price performance (30-day)
+        price_history = stock.history(period="30d")
+        price_performance = ((price_history['Close'][-1] - price_history['Close'][0]) / price_history['Close'][0]) * 100
+
         return {
             'Symbol': symbol,
             'Revenue': revenue,
@@ -81,6 +88,7 @@ def get_financial_data(symbol):
             'Gross Profit Growth': gross_profit_growth,
             'Operating Income Growth': operating_income_growth,
             'Net Income Growth': net_income_growth,
+            '30 Day Price Performance': price_performance,
             'Gross Profit Margin': gross_profit_margin,
             'Operating Profit Margin': operating_profit_margin,
             'Net Profit Margin': net_profit_margin,
@@ -103,18 +111,44 @@ def get_financial_data(symbol):
         print(f"Error fetching data for {symbol}: {e}")
         return None
 
-# Function to fetch stock price performance over the past period
-def get_stock_price_performance(symbol, period):
-    stock = yf.Ticker(symbol)
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=period)
+# Function to generate PDF report
+def generate_pdf(results_df, sheet_name, analyst_name):
+    packet = BytesIO()
+    c = canvas.Canvas(packet, pagesize=letter)
     
-    data = stock.history(start=start_date, end=end_date)
-    if len(data) > 0:
-        price_change = (data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0]
-        return price_change
-    else:
-        return np.nan
+    # Title and metadata
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(30, 750, "Stock Financial Growth and Price Movement Analysis Dashboard")
+    c.setFont("Helvetica", 12)
+    c.drawString(30, 730, f"Sheet Name: {sheet_name}")
+    c.drawString(30, 710, f"Research Analyst: {analyst_name}")
+    c.drawString(30, 690, f"Date of Analysis: {datetime.now().strftime('%Y-%m-%d')}")
+    c.drawString(30, 670, "Disclaimer: This analysis is for informational purposes only. It does not constitute investment advice.")
+    
+    # Insert a table
+    c.setFont("Helvetica", 10)
+    y_position = 630
+    
+    # Add header
+    headers = results_df.columns.tolist()
+    for i, header in enumerate(headers):
+        c.drawString(30 + i*80, y_position, header)
+    y_position -= 20
+    
+    # Add data rows
+    for index, row in results_df.iterrows():
+        for i, col in enumerate(headers):
+            c.drawString(30 + i*80, y_position, str(row[col]))
+        y_position -= 20
+        if y_position < 100:
+            c.showPage()
+            y_position = 750
+
+    # Save PDF to buffer
+    c.save()
+    packet.seek(0)
+    
+    return packet
 
 # Function to fetch stock symbols from the selected sheet
 def get_stock_symbols(sheet_name):
@@ -130,9 +164,6 @@ def analyze_and_display(sheet_name):
     for symbol in stock_symbols:
         financial_data = get_financial_data(symbol)
         if financial_data:
-            for period in [30, 180, 365]:  # 1 month, 6 months, 1 year
-                price_performance = get_stock_price_performance(symbol, period)
-                financial_data[f'{period} Day Price Performance'] = price_performance
             results.append(financial_data)
     
     results_df = pd.DataFrame(results)
@@ -140,29 +171,37 @@ def analyze_and_display(sheet_name):
 
 # Streamlit UI
 def main():
-    st.title("Stock Financial Growth and Price Movement Analysis Dashboard")
+    st.title("Stock Financial Analysis Dashboard")
     
     sheet_names = ['NIFTY50', 'NIFTYNEXT50', 'NIFTY100', 'NIFTY20', 'NIFTY500']
-    
     sheet_name = st.selectbox("Select a sheet to analyze", sheet_names)
+    analyst_name = st.text_input("Research Analyst Name", "")
     
     if st.button("Analyze Stocks"):
-        results_df = analyze_and_display(sheet_name)
-        
-        st.subheader(f"Top 5 Stocks Based on Revenue Growth")
-        top_stocks_revenue_growth = results_df.sort_values(by='Revenue Growth', ascending=False).head(10)
-        st.dataframe(top_stocks_revenue_growth[['Symbol', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth', 'Gross Profit Growth']], use_container_width=True)
+        if analyst_name:
+            results_df = analyze_and_display(sheet_name)
+            
+            # Show Top 5 Stocks with Highest Revenue Growth
+            st.subheader(f"Top 5 Stocks with Highest Revenue Growth")
+            top_stocks_revenue_growth = results_df.sort_values(by='Revenue Growth', ascending=False).head(10)
+            st.dataframe(top_stocks_revenue_growth[['Symbol', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth', 'Gross Profit Growth']], use_container_width=True)
+            
+            # Show Top 5 Stocks with Lowest Price Performance in Last 1 Month
+            st.subheader(f"Top 5 Stocks with Lowest Price Performance in Last 1 Month")
+            top_stocks_price_performance = results_df.sort_values(by='30 Day Price Performance').head(10)
+            st.dataframe(top_stocks_price_performance[['Symbol', '30 Day Price Performance', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth']], use_container_width=True)
 
-        st.subheader(f"Top 5 Stocks with Lowest Price Performance in Last 1 Month")
-        top_stocks_price_performance = results_df.sort_values(by='30 Day Price Performance').head(10)
-        st.dataframe(top_stocks_price_performance[['Symbol', '30 Day Price Performance', 'Revenue Growth', 'Net Income Growth', 'Operating Income Growth']], use_container_width=True)
-        
-        # Visualizing growth for the first stock
-        st.subheader("Revenue Growth Visualization")
-        st.bar_chart(results_df['Revenue Growth'].head(10))
-    
-        st.subheader("Complete Financial Data")
-        st.dataframe(results_df, use_container_width=True)
+            # Visualizing Revenue Growth for the top 10 stocks
+            st.subheader("Revenue Growth Visualization")
+            st.bar_chart(results_df['Revenue Growth'].head(10))
+            
+            # Generate PDF button
+            pdf_button = st.download_button(
+                label="Download PDF Report",
+                data=generate_pdf(results_df, sheet_name, analyst_name).getvalue(),
+                file_name="financial_analysis_report.pdf",
+                mime="application/pdf"
+            )
 
 if __name__ == "__main__":
     main()
